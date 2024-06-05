@@ -143,18 +143,44 @@ func modified_euler(y0, x0, xn, h, e float64, funcNumber int) float64 {
 	return y0
 }
 
+func runge_kutta_method(y0, x0, xn, h float64, funcNumber int) []float64 {
+	var xValues []float64
+	var j float64
+	var yValues []float64
+	n := (xn - x0) / h
+	for j = 0; j < n; j++ {
+		xValues = append(xValues, x0+h*j)
+	}
+	yValues = make([]float64, 4)
+	yValues[0] = y0
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"xi", "yi", "k1", "k2", "k3", "k4"})
+	for i := 0; i < 3; i++ {
+		k1 := h * function(xValues[i], yValues[i], funcNumber)
+		k2 := h * function(xValues[i]+h/2, yValues[i]+k1/2, funcNumber)
+		k3 := h * function(xValues[i]+h/2, yValues[i]+k2/2, funcNumber)
+		k4 := h * function(xValues[i]+h, yValues[i]+k3, funcNumber)
+		table.Append([]string{fmt.Sprintf("%f", xValues[i]), fmt.Sprintf("%f", yValues[i]), fmt.Sprintf("%f", k1), fmt.Sprintf("%f", k2), fmt.Sprintf("%f", k3), fmt.Sprintf("%f", k4)})
+		yValues[i+1] = yValues[i] + (k1+2*k2+2*k3+k4)/6
+	}
+	table.Append([]string{fmt.Sprintf("%f", xValues[3]), fmt.Sprintf("%f", yValues[3])})
+	table.Render()
+	return yValues
+}
+
 func milne_method(y0, x0, xn, h, e float64, funcNumber int) {
 	var xValues []float64
 	var i float64
-	var condition bool
+	//var condition bool
 	n := (xn - x0) / h
 	for i = 0; i < n; i++ {
 		xValues = append(xValues, x0+h*i)
 	}
 	fmt.Println(xValues)
 	yValues := make([]float64, int(n))
-	yValues = append(yValues, y0)
-	for i := 1; i < 4; i++ {
+	yValues = runge_kutta_method(y0, x0, xn, h, funcNumber)
+	fmt.Println(yValues)
+	/*for i := 1; i < 4; i++ {
 		k1 := h * function(xValues[i-1], yValues[i-1], funcNumber)
 		k2 := h * function(xValues[i-1]+h/2, yValues[i-1]+k1/2, funcNumber)
 		k3 := h * function(xValues[i-1]+h/2, yValues[i-1]+k2/2, funcNumber)
@@ -176,5 +202,5 @@ func milne_method(y0, x0, xn, h, e float64, funcNumber int) {
 		}
 		yValues = append(yValues, nextY)
 	}
-	fmt.Println(yValues)
+	fmt.Println(yValues)*/
 }
