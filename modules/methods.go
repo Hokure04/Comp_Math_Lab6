@@ -33,8 +33,8 @@ func true_value_calc(x float64, choice int) float64 {
 	return 0
 }
 
-func Euler_method(y0, h, e float64, funcNumber int, xValues []float64) []float64 {
-	fmt.Println("Метод эйлера:")
+func Euler_method(y0, h, e float64, funcNumber int, xValues []float64, needTable int) []float64 {
+
 	var f float64
 	var yValues []float64
 	table := tablewriter.NewWriter(os.Stdout)
@@ -46,13 +46,13 @@ func Euler_method(y0, h, e float64, funcNumber int, xValues []float64) []float64
 		table.Append([]string{fmt.Sprintf("%d", i), fmt.Sprintf("%f", x), fmt.Sprintf("%f", y0), fmt.Sprintf("%f", f)})
 		y0 = y0 + h*f
 	}
-	table.Render()
-	fmt.Println()
+	if needTable == 1 {
+		table.Render()
+	}
 	return yValues
 }
 
-func Modified_euler(y0, h, e float64, funcNumber int, xValues []float64) []float64 {
-	fmt.Println("Модифицированный метод Эйлера:")
+func Modified_euler(y0, h, e float64, funcNumber int, xValues []float64, needTable int) []float64 {
 	var f float64
 	var yValues []float64
 	table := tablewriter.NewWriter(os.Stdout)
@@ -64,8 +64,10 @@ func Modified_euler(y0, h, e float64, funcNumber int, xValues []float64) []float
 		y0 = y0 + h/2*(function(x, y0, funcNumber)+function(x+h, f, funcNumber))
 
 	}
-	table.Render()
-	fmt.Println()
+	if needTable == 1 {
+		table.Render()
+	}
+
 	return yValues
 }
 
