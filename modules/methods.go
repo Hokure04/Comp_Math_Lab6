@@ -20,55 +20,59 @@ func function(x, y float64, choice int) float64 {
 	return 0
 }
 
-func Euler_method(y0, x0, xn, h, e float64, funcNumber int) (float64, []float64) {
+func true_value_calc(x float64, choice int) float64 {
+	if choice == 1 {
+		return math.Exp(x/3) - 12*x - 36
+	} else if choice == 2 {
+		return math.Sin(x)/2 - math.Cos(x)/2 + math.Exp(x)
+	} else if choice == 3 {
+		return math.Exp(x) - 3*math.Pow(x, 2)/2 - 3*x - 4
+	} else if choice == 4 {
+		return -math.Exp(x) / (x*math.Exp(x) + 1)
+	}
+	return 0
+}
+
+func Euler_method(y0, h, e float64, funcNumber int, xValues []float64) []float64 {
 	fmt.Println("Метод эйлера:")
 	var f float64
-	var i float64
 	var yValues []float64
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"xi", "yi", "f(xi, yi)"})
-	yValues = append(yValues, y0)
-	for i = x0; i < xn; i += h {
-		f = function(i, y0, funcNumber)
-		table.Append([]string{fmt.Sprintf("%f", i), fmt.Sprintf("%f", y0), fmt.Sprintf("%f", f)})
-		y0 = y0 + h*f
+	table.SetHeader([]string{"i", "xi", "yi", "f(xi, yi)"})
+
+	for i, x := range xValues {
 		yValues = append(yValues, y0)
+		f = function(x, y0, funcNumber)
+		table.Append([]string{fmt.Sprintf("%d", i), fmt.Sprintf("%f", x), fmt.Sprintf("%f", y0), fmt.Sprintf("%f", f)})
+		y0 = y0 + h*f
 	}
-	table.Append([]string{fmt.Sprintf("%f", i), fmt.Sprintf("%f", y0)})
 	table.Render()
 	fmt.Println()
-	return y0, yValues
+	return yValues
 }
 
-func Modified_euler(y0, x0, xn, h, e float64, funcNumber int) (float64, []float64) {
+func Modified_euler(y0, h, e float64, funcNumber int, xValues []float64) []float64 {
 	fmt.Println("Модифицированный метод Эйлера:")
 	var f float64
-	var i float64
 	var yValues []float64
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"xi", "yi", "y'"})
-	yValues = append(yValues, y0)
-	for i = x0; i < xn; i += h {
-		f = y0 + h*function(i, y0, funcNumber)
-		table.Append([]string{fmt.Sprintf("%f", i), fmt.Sprintf("%f", y0), fmt.Sprintf("%f", f)})
-		y0 = y0 + h/2*(function(i, y0, funcNumber)+function(i+h, f, funcNumber))
+	table.SetHeader([]string{"i", "xi", "yi", "y'"})
+	for i, x := range xValues {
 		yValues = append(yValues, y0)
+		f = y0 + h*function(x, y0, funcNumber)
+		table.Append([]string{fmt.Sprintf("%d", i), fmt.Sprintf("%f", x), fmt.Sprintf("%f", y0), fmt.Sprintf("%f", f)})
+		y0 = y0 + h/2*(function(x, y0, funcNumber)+function(x+h, f, funcNumber))
+
 	}
-	table.Append([]string{fmt.Sprintf("%f", i), fmt.Sprintf("%f", y0)})
 	table.Render()
 	fmt.Println()
-	return y0, yValues
+	return yValues
 }
 
-func runge_kutta_method(y0, x0, xn, h float64, funcNumber int) []float64 {
+func runge_kutta_method(y0, h float64, funcNumber int, xValues []float64) []float64 {
 	fmt.Println("Первые 4 значения по методу Рунге 4 порядка:")
-	var xValues []float64
-	var j float64
 	var yValues []float64
-	n := math.Abs(xn-x0) / h
-	for j = 0; j < n; j++ {
-		xValues = append(xValues, x0+h*j)
-	}
+
 	yValues = make([]float64, 4)
 	yValues[0] = y0
 	table := tablewriter.NewWriter(os.Stdout)
@@ -86,20 +90,18 @@ func runge_kutta_method(y0, x0, xn, h float64, funcNumber int) []float64 {
 	return yValues
 }
 
-func Milne_method(y0, x0, xn, h, e float64, funcNumber int) (float64, []float64) {
+func Milne_method(y0, h, e float64, funcNumber int, xValues []float64) ([]float64, []float64) {
 	fmt.Println("Метод Милна:")
-	var xValues []float64
-	var i float64
-	n := (xn - x0) / h
-	if n < 4 {
+	var true_y_values []float64
+	if len(xValues) < 4 {
 		fmt.Println("Слишком мало точек для использования метода Милна")
-		return math.Inf(0), nil
+		return nil, nil
 	}
-	for i = 0; i < n+1; i++ {
-		xValues = append(xValues, x0+h*i)
+	for i := 0; i < len(xValues); i++ {
+		true_y_values = append(true_y_values, true_value_calc(xValues[i], funcNumber))
 	}
-	yValues := make([]float64, int(n))
-	yValues = runge_kutta_method(y0, x0, xn, h, funcNumber)
+	yValues := make([]float64, len(xValues))
+	yValues = runge_kutta_method(y0, h, funcNumber, xValues)
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"xi", "predict_y", "yi"})
 	for i := 4; i < len(xValues); i++ {
@@ -113,7 +115,6 @@ func Milne_method(y0, x0, xn, h, e float64, funcNumber int) (float64, []float64)
 		table.Append([]string{fmt.Sprintf("%f", xValues[i]), fmt.Sprintf("%f", corr_y), fmt.Sprintf("%f", yValues[i])})
 	}
 	table.Render()
-	y := yValues[int(n)]
 	fmt.Println()
-	return y, yValues
+	return yValues, true_y_values
 }

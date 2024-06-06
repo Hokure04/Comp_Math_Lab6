@@ -113,40 +113,50 @@ func input() {
 			fmt.Println("Ошибка: Точность должна являться положительным числом отличным от нуля")
 			break
 		}
-		y1, yValues1 := modules.Euler_method(y0, a, b, h, e, choiceInt)
-		fmt.Printf("Решение диффиренциального уравнения по методу Эйлера: %f\n", y1)
-		y2, yValues2 := modules.Modified_euler(y0, a, b, h, e, choiceInt)
-		fmt.Printf("Решение дифференциального уравнения по Модифицированному Эйлеру: %f\n", y2)
-		y3, yValues3 := modules.Milne_method(y0, a, b, h, e, choiceInt)
+		var i float64
+		xValues := make([]float64, 0)
+		n := math.Abs(b-a) / h
+		for i = 0; i <= n; i++ {
+			x := a + h*i
+			xValues = append(xValues, x)
+		}
 
-		if y3 == math.Inf(0) && yValues3 == nil {
+		yValues1 := modules.Euler_method(y0, h, e, choiceInt, xValues)
+
+		fmt.Printf("Решение диффиренциального уравнения по методу Эйлера: %f\n", yValues1[len(xValues)-1])
+		yValues2 := modules.Modified_euler(y0, h, e, choiceInt, xValues)
+		fmt.Printf("Решение дифференциального уравнения по Модифицированному Эйлеру: %f\n", yValues2[len(xValues)-1])
+		yValues3, true_values := modules.Milne_method(y0, h, e, choiceInt, xValues)
+		/*fmt.Println(xValues)
+		fmt.Println(yValues3)*/
+
+		if yValues3 == nil && true_values == nil {
+			plotGraphs(yValues1, yValues2, yValues3, xValues, true_values)
 			continue
 		}
-		fmt.Printf("Решение дифференциального уравнения по методу Милна: %f\n", y3)
+		fmt.Printf("Решение дифференциального уравнения по методу Милна: %f\n", yValues3[len(xValues)-1])
 
-		xValues := make([]float64, len(yValues1))
-		for i := 0; i < len(yValues1); i++ {
-			xValues[i] = a + h*float64(i)
+		inaccuracy := 0.0
+		for i, y := range yValues3 {
+			inaccuracy = math.Max(inaccuracy, math.Abs(true_values[i]-y))
 		}
-
-		plotGraphs(yValues1, yValues2, yValues3, xValues)
+		fmt.Printf("Погрешность для метода Милна: %f\n", inaccuracy)
+		plotGraphs(yValues1, yValues2, yValues3, xValues, true_values)
 	}
 }
 
-func plotGraphs(yValues1, yValues2, yValues3 []float64, xValues []float64) {
-	dirPath := "graphs"
-	err := os.MkdirAll(dirPath, os.ModePerm)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+func plotGraphs(yValues1, yValues2, yValues3, xValues, true_values []float64) {
 
 	p := plot.New()
 
+	// Set the plot's title.
 	p.Title.Text = "Графики методов Эйлера, Модифицированного Эйлера и Милна"
+
+	// Set the plot's x and y labels.
 	p.X.Label.Text = "x"
 	p.Y.Label.Text = "y"
 
+	// Create a new line plot.
 	eulerPoints := make(plotter.XYs, len(yValues1))
 	for i, y := range yValues1 {
 		eulerPoints[i].X = xValues[i]
@@ -159,6 +169,7 @@ func plotGraphs(yValues1, yValues2, yValues3 []float64, xValues []float64) {
 	eulerLine.Color = color.RGBA{R: 255, A: 255}
 	p.Add(eulerLine)
 
+	// Create a new line plot.
 	modifiedEulerPoints := make(plotter.XYs, len(yValues2))
 	for i, y := range yValues2 {
 		modifiedEulerPoints[i].X = xValues[i]
@@ -171,6 +182,7 @@ func plotGraphs(yValues1, yValues2, yValues3 []float64, xValues []float64) {
 	modifiedEulerLine.Color = color.RGBA{G: 255, A: 255}
 	p.Add(modifiedEulerLine)
 
+	// Create a new line plot.
 	milnePoints := make(plotter.XYs, len(yValues3))
 	for i, y := range yValues3 {
 		milnePoints[i].X = xValues[i]
@@ -183,16 +195,29 @@ func plotGraphs(yValues1, yValues2, yValues3 []float64, xValues []float64) {
 	milneLine.Color = color.RGBA{B: 255, A: 255}
 	p.Add(milneLine)
 
+	// Create a new line plot for true values.
+	truePoints := make(plotter.XYs, len(true_values))
+	for i, y := range true_values {
+		truePoints[i].X = xValues[i]
+		truePoints[i].Y = y
+	}
+	trueLine, err := plotter.NewLine(truePoints)
+	if err != nil {
+		panic(err)
+	}
+	trueLine.Color = color.RGBA{R: 255, G: 0, B: 255, A: 255}
+	p.Add(trueLine)
+
 	fileIndex := 1
 	fileName := fmt.Sprintf("methods_graphs_%d.png", fileIndex)
-	filePath := filepath.Join(dirPath, fileName)
+	filePath := filepath.Join("graphs", fileName)
 	for {
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
 			break
 		}
 		fileIndex++
 		fileName = fmt.Sprintf("methods_graphs_%d.png", fileIndex)
-		filePath = filepath.Join(dirPath, fileName)
+		filePath = filepath.Join("graphs", fileName)
 	}
 
 	err = p.Save(6*vg.Inch, 4*vg.Inch, filePath)
