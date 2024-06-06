@@ -1,11 +1,16 @@
 package main
 
 import (
+	"Comp_Math_Lab6/modules"
 	"bufio"
 	"fmt"
-	"github.com/olekukonko/tablewriter"
+	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/vg"
+	"image/color"
 	"math"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -14,21 +19,14 @@ func main() {
 	input()
 }
 
-func function(x, y float64, choice int) float64 {
-	if choice == 1 {
-		return y + (1+x)*math.Pow(y, 2)
-	} else if choice == 2 {
-		return 4*x + y/3
-	}
-	return 0
-}
-
 func input() {
 	var y0, a, b, h, e float64
-	fmt.Println("Выберите функцию для дифференцирования")
-	fmt.Println("1. y + (1+x)*y^2")
-	fmt.Println("2. 4*x + y/3")
 	for {
+		fmt.Println("Выберите функцию для дифференцирования")
+		fmt.Println("1. 4*x + y/3")
+		fmt.Println("2. y + cos(x)")
+		fmt.Println("3. 1 + y + 1.5*x^2")
+		fmt.Println("4. y + (1 + x) * y^2")
 		choice := bufio.NewScanner(os.Stdin)
 		choice.Scan()
 		input := choice.Text()
@@ -40,8 +38,8 @@ func input() {
 			continue
 		}
 
-		if choiceInt > 3 || choiceInt < 1 {
-			fmt.Println("Введите значение от 1 до 3")
+		if choiceInt > 4 || choiceInt < 1 {
+			fmt.Println("Введите значение от 1 до 4")
 			continue
 		}
 		for {
@@ -77,6 +75,10 @@ func input() {
 				fmt.Println("Ошибка: Вы ввели некорректный интервал")
 				continue
 			}
+			if a >= b {
+				fmt.Println("Ошибка: Первое значение должно быть меньше второго")
+				continue
+			}
 			break
 		}
 
@@ -89,6 +91,9 @@ func input() {
 			if err != nil {
 				fmt.Println("Ошибка: Шаг h должен быть числом")
 				continue
+			}
+			if h <= 0 {
+				fmt.Println("Шаг должен являться положительным числом отличным от нуля")
 			}
 			break
 		}
@@ -103,104 +108,95 @@ func input() {
 				fmt.Println("Ошибка: Точность должна являться числом")
 				continue
 			}
+			if e <= 0 {
+			}
+			fmt.Println("Ошибка: Точность должна являться положительным числом отличным от нуля")
 			break
 		}
-		y1 := euler_method(y0, a, b, h, e, choiceInt)
+		y1, yValues1 := modules.Euler_method(y0, a, b, h, e, choiceInt)
 		fmt.Printf("Решение диффиренциального уравнения по методу Эйлера: %f\n", y1)
-		y2 := modified_euler(y0, a, b, h, e, choiceInt)
+		y2, yValues2 := modules.Modified_euler(y0, a, b, h, e, choiceInt)
 		fmt.Printf("Решение дифференциального уравнения по Модифицированному Эйлеру: %f\n", y2)
-		milne_method(y0, a, b, h, e, choiceInt)
-	}
-}
+		y3, yValues3 := modules.Milne_method(y0, a, b, h, e, choiceInt)
 
-func euler_method(y0, x0, xn, h, e float64, funcNumber int) float64 {
-	var f float64
-	var i float64
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"xi", "yi", "f(xi, yi)"})
-	for i = x0; i < xn; i += h {
-		f = function(i, y0, funcNumber)
-		table.Append([]string{fmt.Sprintf("%f", i), fmt.Sprintf("%f", y0), fmt.Sprintf("%f", f)})
-		y0 = y0 + h*f
-	}
-	table.Append([]string{fmt.Sprintf("%f", i), fmt.Sprintf("%f", y0)})
-	table.Render()
-	return y0
-}
-
-func modified_euler(y0, x0, xn, h, e float64, funcNumber int) float64 {
-	var f float64
-	var i float64
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"xi", "yi", "y'"})
-	for i = x0; i < xn; i += h {
-		f = y0 + h*function(i, y0, funcNumber)
-		table.Append([]string{fmt.Sprintf("%f", i), fmt.Sprintf("%f", y0), fmt.Sprintf("%f", f)})
-		y0 = y0 + h/2*(function(i, y0, funcNumber)+function(i+h, f, funcNumber))
-	}
-	table.Append([]string{fmt.Sprintf("%f", i), fmt.Sprintf("%f", y0)})
-	table.Render()
-	return y0
-}
-
-func runge_kutta_method(y0, x0, xn, h float64, funcNumber int) []float64 {
-	var xValues []float64
-	var j float64
-	var yValues []float64
-	n := (xn - x0) / h
-	for j = 0; j < n; j++ {
-		xValues = append(xValues, x0+h*j)
-	}
-	yValues = make([]float64, 4)
-	yValues[0] = y0
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"xi", "yi", "k1", "k2", "k3", "k4"})
-	for i := 0; i < 3; i++ {
-		k1 := h * function(xValues[i], yValues[i], funcNumber)
-		k2 := h * function(xValues[i]+h/2, yValues[i]+k1/2, funcNumber)
-		k3 := h * function(xValues[i]+h/2, yValues[i]+k2/2, funcNumber)
-		k4 := h * function(xValues[i]+h, yValues[i]+k3, funcNumber)
-		table.Append([]string{fmt.Sprintf("%f", xValues[i]), fmt.Sprintf("%f", yValues[i]), fmt.Sprintf("%f", k1), fmt.Sprintf("%f", k2), fmt.Sprintf("%f", k3), fmt.Sprintf("%f", k4)})
-		yValues[i+1] = yValues[i] + (k1+2*k2+2*k3+k4)/6
-	}
-	table.Append([]string{fmt.Sprintf("%f", xValues[3]), fmt.Sprintf("%f", yValues[3])})
-	table.Render()
-	return yValues
-}
-
-func milne_method(y0, x0, xn, h, e float64, funcNumber int) {
-	var xValues []float64
-	var i float64
-	//var condition bool
-	n := (xn - x0) / h
-	for i = 0; i < n; i++ {
-		xValues = append(xValues, x0+h*i)
-	}
-	fmt.Println(xValues)
-	yValues := make([]float64, int(n))
-	yValues = runge_kutta_method(y0, x0, xn, h, funcNumber)
-	fmt.Println(yValues)
-	/*for i := 1; i < 4; i++ {
-		k1 := h * function(xValues[i-1], yValues[i-1], funcNumber)
-		k2 := h * function(xValues[i-1]+h/2, yValues[i-1]+k1/2, funcNumber)
-		k3 := h * function(xValues[i-1]+h/2, yValues[i-1]+k2/2, funcNumber)
-		k4 := h * function(xValues[i-1]+h, yValues[i-1]+k3, funcNumber)
-		yValues = append(yValues, yValues[i-1]+(k1+2*k2+2*k3+k4)/6)
-	}
-	condition = true
-	for i := 4; i < int(n); i++ {
-		y := yValues[i-4] + 4*h*(2*function(xValues[i-3], yValues[i-3], funcNumber)-function(xValues[i-2], yValues[i-2], funcNumber)+2*function(xValues[i-1], yValues[i-1], funcNumber))/3
-		nextY := y
-
-		for condition {
-			yc := yValues[i-2] + h*(function(xValues[i-2], yValues[i-2], funcNumber)+4*function(xValues[i-1], yValues[i-1], funcNumber)+function(xValues[i], nextY, funcNumber))/3
-			if math.Abs(yc-nextY) < e {
-				nextY = yc
-				break
-			}
-			nextY = yc
+		if y3 == math.Inf(0) && yValues3 == nil {
+			continue
 		}
-		yValues = append(yValues, nextY)
+		fmt.Printf("Решение дифференциального уравнения по методу Милна: %f\n", y3)
+
+		xValues := make([]float64, len(yValues1))
+		for i := 0; i < len(yValues1); i++ {
+			xValues[i] = a + h*float64(i)
+		}
+
+		plotGraphs(yValues1, yValues2, yValues3, xValues)
 	}
-	fmt.Println(yValues)*/
+}
+
+func plotGraphs(yValues1, yValues2, yValues3 []float64, xValues []float64) {
+	dirPath := "graphs"
+	err := os.MkdirAll(dirPath, os.ModePerm)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	p := plot.New()
+
+	p.Title.Text = "Графики методов Эйлера, Модифицированного Эйлера и Милна"
+	p.X.Label.Text = "x"
+	p.Y.Label.Text = "y"
+
+	eulerPoints := make(plotter.XYs, len(yValues1))
+	for i, y := range yValues1 {
+		eulerPoints[i].X = xValues[i]
+		eulerPoints[i].Y = y
+	}
+	eulerLine, err := plotter.NewLine(eulerPoints)
+	if err != nil {
+		panic(err)
+	}
+	eulerLine.Color = color.RGBA{R: 255, A: 255}
+	p.Add(eulerLine)
+
+	modifiedEulerPoints := make(plotter.XYs, len(yValues2))
+	for i, y := range yValues2 {
+		modifiedEulerPoints[i].X = xValues[i]
+		modifiedEulerPoints[i].Y = y
+	}
+	modifiedEulerLine, err := plotter.NewLine(modifiedEulerPoints)
+	if err != nil {
+		panic(err)
+	}
+	modifiedEulerLine.Color = color.RGBA{G: 255, A: 255}
+	p.Add(modifiedEulerLine)
+
+	milnePoints := make(plotter.XYs, len(yValues3))
+	for i, y := range yValues3 {
+		milnePoints[i].X = xValues[i]
+		milnePoints[i].Y = y
+	}
+	milneLine, err := plotter.NewLine(milnePoints)
+	if err != nil {
+		panic(err)
+	}
+	milneLine.Color = color.RGBA{B: 255, A: 255}
+	p.Add(milneLine)
+
+	fileIndex := 1
+	fileName := fmt.Sprintf("methods_graphs_%d.png", fileIndex)
+	filePath := filepath.Join(dirPath, fileName)
+	for {
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			break
+		}
+		fileIndex++
+		fileName = fmt.Sprintf("methods_graphs_%d.png", fileIndex)
+		filePath = filepath.Join(dirPath, fileName)
+	}
+
+	err = p.Save(6*vg.Inch, 4*vg.Inch, filePath)
+	if err != nil {
+		panic(err)
+	}
 }
